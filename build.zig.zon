@@ -1,0 +1,21 @@
+.{
+    .name = .libzev,
+    .version = "0.0.1",
+    .fingerprint = 0x3373e25b65f87864, // Changing this has security and trust implications.
+    .minimum_zig_version = "0.14.0",
+
+    .dependencies = .{
+        .aio = .{
+            .url = "git+https://github.com/Cloudef/zig-aio.git#72b9ce91043091959b430446ae9b33431487e123",
+            .hash = "aio-0.0.0-776t3hDyBAACIpI8sTlUhJJlySCm4vPrHbwtGJFhCWcY",
+        },
+    },
+
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+        "src",
+        "LICENSE",
+        "README.md",
+    },
+}
