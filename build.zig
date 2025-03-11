@@ -16,6 +16,13 @@ pub fn build(b: *std.Build) void {
         .root_module = lib_mod,
     });
 
+    const aio = b.dependency("aio", .{
+        .target = target,
+        .optimize = optimize
+    });
+
+    lib.root_module.addImport("aio", aio.module("aio"));
+
     b.installArtifact(lib);
 
     const lib_unit_tests = b.addTest(.{
