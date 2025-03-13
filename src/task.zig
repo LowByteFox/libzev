@@ -1,5 +1,6 @@
 const std = @import("std");
 const aio = @import("aio");
+const Loop = @import("loop.zig");
 
 pub const TaskAction = enum {
     rearm,
@@ -7,15 +8,15 @@ pub const TaskAction = enum {
 };
 
 const Self = @This();
-const after_completion = fn(self: *Self, failed: bool) TaskAction;
 
 userdata: usize,
-after: after_completion,
+gen: *const fn(self: *Self, rt: *aio.Dynamic) anyerror!void,
+after: *const fn(self: *Self, failed: bool) TaskAction,
 
-pub fn init(op: aio.Operation, userdata: usize, after: after_completion) Self {
+pub fn init(gen: *const fn(self: *Self, rt: *aio.Dynamic) anyerror!void, done: *const fn(self: *Self, failed: bool) TaskAction) Self {
     return .{
-        .op = op,
-        .userdata = userdata,
-        .after = after,
+        .userdata = 0,
+        .gen = gen,
+        .after = done,
     };
 }
