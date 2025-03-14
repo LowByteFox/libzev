@@ -16,6 +16,12 @@ pub fn build(b: *std.Build) void {
         .root_module = lib_mod,
     });
 
+    b.installDirectory(.{
+        .source_dir = lib.getEmittedDocs(),
+        .install_subdir = "docs",
+        .install_dir = .prefix,
+    });
+
     const aio = b.dependency("aio", .{
         .target = target,
         .optimize = optimize

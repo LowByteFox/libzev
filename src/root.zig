@@ -1,3 +1,5 @@
+//! `Libxev` inspired library using `zig-aio`, provides user friendly APIs with an event loop backed by `zig-aio`.
+
 pub const Loop = @import("Loop.zig");
 const Task = @import("Task.zig");
 pub const TaskAction = Task.TaskAction;

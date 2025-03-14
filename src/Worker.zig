@@ -1,3 +1,9 @@
+//! `Worker` task allows the user to perform heavy computational task on another thread without blocking the event loop or the main thread
+//!
+//! DO NOT under ANY CIRCUMSTANCES operate on `Loop` from any other thread other than the main thread!!
+//!
+//! Ensure it lives long enough, if not, there will be consequences!!
+
 const std = @import("std");
 const aio = @import("aio");
 const Loop = @import("Loop.zig");
@@ -8,9 +14,11 @@ const Worker = @This();
 userdata: usize,
 task: Task,
 notifier: aio.EventSource,
+/// Returning `.rearm` will run the work function again on the same thread.
 work: *const fn(self: *Worker) Task.TaskAction,
 after_work: *const fn(self: *Worker) Task.TaskAction,
 
+/// Initialize `Worker` task , `work` runs on a separate thread, `after` runs on the main thread.
 pub fn init(work: fn(self: *Worker) Task.TaskAction, after: fn(self: *Worker) Task.TaskAction, userdata: usize) !Worker {
     return .{
         .userdata = userdata,
@@ -21,6 +29,7 @@ pub fn init(work: fn(self: *Worker) Task.TaskAction, after: fn(self: *Worker) Ta
     };
 }
 
+/// Register the task on the event loop
 pub fn register(self: *Worker, loop: *Loop) !void {
     self.task.userdata = @intFromPtr(self);
     try loop.add_task(&self.task);

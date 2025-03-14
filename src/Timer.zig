@@ -1,3 +1,7 @@
+//! `Timer` task is useful for timing an operation asynchronously
+//!
+//! Ensure it lives long enough, if not, there will be consequences!!
+
 const std = @import("std");
 const aio = @import("aio");
 const Loop = @import("Loop.zig");
@@ -10,6 +14,7 @@ task: Task,
 timeout_ns: u128,
 fun: *const fn(self: *Timer) Task.TaskAction,
 
+/// Initialize `Timer` task, runs `fun` after `timeout` nanoseconds pass.
 pub fn init(fun: fn(self: *Timer) Task.TaskAction, timeout: u128, userdata: usize) Timer {
     return .{
         .userdata = userdata,
@@ -19,6 +24,7 @@ pub fn init(fun: fn(self: *Timer) Task.TaskAction, timeout: u128, userdata: usiz
     };
 }
 
+/// Register the task on the event loop
 pub fn register(self: *Timer, loop: *Loop) !void {
     self.task.userdata = @intFromPtr(self);
     try loop.add_task(&self.task);

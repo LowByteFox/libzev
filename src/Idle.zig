@@ -1,3 +1,7 @@
+//! `Idle` task is useful for waking up the event loop or running task asynchronously
+//!
+//! Ensure it lives long enough, if not, there will be consequences!!
+
 const std = @import("std");
 const aio = @import("aio");
 const Loop = @import("Loop.zig");
@@ -9,6 +13,7 @@ userdata: usize,
 task: Task,
 fun: *const fn(self: *Idle) Task.TaskAction,
 
+/// Initialize `Idle` task, runs `fun` after completion.
 pub fn init(fun: fn(self: *Idle) Task.TaskAction, userdata: usize) Idle {
     return .{
         .userdata = userdata,
@@ -17,6 +22,7 @@ pub fn init(fun: fn(self: *Idle) Task.TaskAction, userdata: usize) Idle {
     };
 }
 
+/// Register the task on the event loop.
 pub fn register(self: *Idle, loop: *Loop) !void {
     self.task.userdata = @intFromPtr(self);
     try loop.add_task(&self.task);
