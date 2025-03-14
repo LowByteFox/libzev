@@ -8,4 +8,5 @@ test {
     _ = @import("loop.zig");
     _ = @import("idle.zig");
     _ = @import("timer.zig");
+    _ = @import("worker.zig");
 }

@@ -27,12 +27,10 @@ pub fn register(self: *Self, loop: *Loop) !void {
 fn gen(self: *Task, rt: *aio.Dynamic) anyerror!void {
     const timer: *Self = @ptrFromInt(self.userdata);
 
-    try rt.queue(.{
-        aio.op(.timeout, .{
-            .ns = timer.timeout_ns,
-            .userdata = @intFromPtr(self),
-        }, .unlinked),
-    }, {});
+    try rt.queue(aio.op(.timeout, .{
+        .ns = timer.timeout_ns,
+        .userdata = @intFromPtr(self),
+    }, .unlinked), {});
 }
 
 fn done(task: *Task, _: bool) Task.TaskAction {
@@ -59,7 +57,7 @@ fn hello(timer: *Self) Task.TaskAction {
 }
 
 test "timer test" {
-    var loop = try Loop.init(std.heap.page_allocator, 4096);
+    var loop = try Loop.init(std.testing.allocator, 4096);
     defer loop.deinit();
 
     var timer = init(hello, counter, 0);
