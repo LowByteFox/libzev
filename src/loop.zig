@@ -30,7 +30,10 @@ pub fn tick(self: *Self, mode: aio.CompletionMode) !u16 {
 }
 
 pub fn aio_complete(self: *Self, _: aio.Id, userdata: usize, failed: bool) void {
-    std.debug.assert(userdata != 0);
+    if (userdata == 0) {
+        return;
+    }
+
     var task: *Task = @ptrFromInt(userdata);
 
     if (task.after(task, failed) == .rearm) {
