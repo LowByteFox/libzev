@@ -1,13 +1,13 @@
-pub const Loop = @import("loop.zig");
-const Task = @import("task.zig");
+pub const Loop = @import("Loop.zig");
+const Task = @import("Task.zig");
 pub const TaskAction = Task.TaskAction;
-pub const Idle = @import("idle.zig");
-pub const Timer = @import("timer.zig");
-pub const Worker = @import("worker.zig");
+pub const Idle = @import("Idle.zig");
+pub const Timer = @import("Timer.zig");
+pub const Worker = @import("Worker.zig");
 
 test {
-    _ = @import("loop.zig");
-    _ = @import("idle.zig");
-    _ = @import("timer.zig");
-    _ = @import("worker.zig");
+    _ = @import("Loop.zig");
+    _ = @import("Idle.zig");
+    _ = @import("Timer.zig");
+    _ = @import("Worker.zig");
 }

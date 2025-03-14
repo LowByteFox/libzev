@@ -1,16 +1,16 @@
 const std = @import("std");
 const aio = @import("aio");
-const Loop = @import("loop.zig");
-const Task = @import("task.zig");
+const Loop = @import("Loop.zig");
+const Task = @import("Task.zig");
 
-const Self = @This();
+const Timer = @This();
 
 userdata: usize,
 task: Task,
 timeout_ns: u128,
-fun: *const fn(self: *Self) Task.TaskAction,
+fun: *const fn(self: *Timer) Task.TaskAction,
 
-pub fn init(fun: fn(self: *Self) Task.TaskAction, timeout: u128, userdata: usize) Self {
+pub fn init(fun: fn(self: *Timer) Task.TaskAction, timeout: u128, userdata: usize) Timer {
     return .{
         .userdata = userdata,
         .timeout_ns = timeout,
@@ -19,13 +19,13 @@ pub fn init(fun: fn(self: *Self) Task.TaskAction, timeout: u128, userdata: usize
     };
 }
 
-pub fn register(self: *Self, loop: *Loop) !void {
+pub fn register(self: *Timer, loop: *Loop) !void {
     self.task.userdata = @intFromPtr(self);
     try loop.add_task(&self.task);
 }
 
 fn gen(self: *Task, rt: *aio.Dynamic) anyerror!void {
-    const timer: *Self = @ptrFromInt(self.userdata);
+    const timer: *Timer = @ptrFromInt(self.userdata);
 
     try rt.queue(aio.op(.timeout, .{
         .ns = timer.timeout_ns,
@@ -34,7 +34,7 @@ fn gen(self: *Task, rt: *aio.Dynamic) anyerror!void {
 }
 
 fn done(task: *Task, _: bool) Task.TaskAction {
-    const timer: *Self = @ptrFromInt(task.userdata);
+    const timer: *Timer = @ptrFromInt(task.userdata);
     return timer.fun(timer);
 }
 
@@ -42,7 +42,7 @@ fn done(task: *Task, _: bool) Task.TaskAction {
 
 var counter: u128 = 100;
 
-fn hello(timer: *Self) Task.TaskAction {
+fn hello(timer: *Timer) Task.TaskAction {
     std.debug.print("Hello, World after {}ms!\n", .{counter});
 
     counter += 100;

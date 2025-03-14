@@ -1,17 +1,17 @@
 const std = @import("std");
 const aio = @import("aio");
-const Loop = @import("loop.zig");
-const Task = @import("task.zig");
+const Loop = @import("Loop.zig");
+const Task = @import("Task.zig");
 
-const Self = @This();
+const Worker = @This();
 
 userdata: usize,
 task: Task,
 notifier: aio.EventSource,
-work: *const fn(self: *Self) Task.TaskAction,
-after_work: *const fn(self: *Self) Task.TaskAction,
+work: *const fn(self: *Worker) Task.TaskAction,
+after_work: *const fn(self: *Worker) Task.TaskAction,
 
-pub fn init(work: fn(self: *Self) Task.TaskAction, after: fn(self: *Self) Task.TaskAction, userdata: usize) !Self {
+pub fn init(work: fn(self: *Worker) Task.TaskAction, after: fn(self: *Worker) Task.TaskAction, userdata: usize) !Worker {
     return .{
         .userdata = userdata,
         .task = Task.init(gen, done),
@@ -21,13 +21,13 @@ pub fn init(work: fn(self: *Self) Task.TaskAction, after: fn(self: *Self) Task.T
     };
 }
 
-pub fn register(self: *Self, loop: *Loop) !void {
+pub fn register(self: *Worker, loop: *Loop) !void {
     self.task.userdata = @intFromPtr(self);
     try loop.add_task(&self.task);
 }
 
 fn gen(self: *Task, rt: *aio.Dynamic) anyerror!void {
-    const worker: *Self = @ptrFromInt(self.userdata);
+    const worker: *Worker = @ptrFromInt(self.userdata);
 
     try rt.queue(aio.op(.wait_event_source, .{
         .source = &worker.notifier,
@@ -38,7 +38,7 @@ fn gen(self: *Task, rt: *aio.Dynamic) anyerror!void {
 }
 
 fn done(task: *Task, _: bool) Task.TaskAction {
-    const worker: *Self = @ptrFromInt(task.userdata);
+    const worker: *Worker = @ptrFromInt(task.userdata);
 
     return blk: {
         const ret = worker.after_work(worker);
@@ -53,7 +53,7 @@ fn done(task: *Task, _: bool) Task.TaskAction {
     };
 }
 
-fn perform_work(self: *Self) void {
+fn perform_work(self: *Worker) void {
     while (self.work(self) == .rearm) {}
     self.notifier.notify();
 }
@@ -72,7 +72,7 @@ fn fibonacci(n: u64) u64 {
 
 var value: u64 = 10;
 
-fn test_work(_: *Self) Task.TaskAction {
+fn test_work(_: *Worker) Task.TaskAction {
     std.debug.print("Doing work from Thread!\n", .{});
     const out = fibonacci(value);
     std.debug.print("Work from thread {}: {}\n", .{std.Thread.getCurrentId(), out});
@@ -85,7 +85,7 @@ fn test_work(_: *Self) Task.TaskAction {
     return .disarm;
 }
 
-fn test_after(_: *Self) Task.TaskAction {
+fn test_after(_: *Worker) Task.TaskAction {
     std.debug.print("Work Done!\n", .{});
 
     value -= 5; // becomes 45

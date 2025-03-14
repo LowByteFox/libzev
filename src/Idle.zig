@@ -1,15 +1,15 @@
 const std = @import("std");
 const aio = @import("aio");
-const Loop = @import("loop.zig");
-const Task = @import("task.zig");
+const Loop = @import("Loop.zig");
+const Task = @import("Task.zig");
 
-const Self = @This();
+const Idle = @This();
 
 userdata: usize,
 task: Task,
-fun: *const fn(self: *Self) Task.TaskAction,
+fun: *const fn(self: *Idle) Task.TaskAction,
 
-pub fn init(fun: fn(self: *Self) Task.TaskAction, userdata: usize) Self {
+pub fn init(fun: fn(self: *Idle) Task.TaskAction, userdata: usize) Idle {
     return .{
         .userdata = userdata,
         .task = Task.init(gen, done),
@@ -17,7 +17,7 @@ pub fn init(fun: fn(self: *Self) Task.TaskAction, userdata: usize) Self {
     };
 }
 
-pub fn register(self: *Self, loop: *Loop) !void {
+pub fn register(self: *Idle, loop: *Loop) !void {
     self.task.userdata = @intFromPtr(self);
     try loop.add_task(&self.task);
 }
@@ -29,7 +29,7 @@ fn gen(self: *Task, rt: *aio.Dynamic) anyerror!void {
 }
 
 fn done(task: *Task, _: bool) Task.TaskAction {
-    const idle: *Self = @ptrFromInt(task.userdata);
+    const idle: *Idle = @ptrFromInt(task.userdata);
     return idle.fun(idle);
 }
 
@@ -37,7 +37,7 @@ fn done(task: *Task, _: bool) Task.TaskAction {
 
 var counter: i32 = 0;
 
-fn hello(_: *Self) Task.TaskAction {
+fn hello(_: *Idle) Task.TaskAction {
     std.debug.print("Hello, World!\n", .{});
 
     counter += 1;
