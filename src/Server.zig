@@ -1,3 +1,9 @@
+//! `Server` task allows for creating a server to which clients can connect to
+//!
+//! The only reason why an `std.mem.Allocator` is required, is to create temporary `Client` which you are REQUIRED to manage once `accept` finishes
+//!
+//! Ensure it lives long enough, if not, there will be consequences!!
+
 const std = @import("std");
 const aio = @import("aio");
 const Loop = @import("Loop.zig");
@@ -16,6 +22,7 @@ on_accept: *const fn(self: *Server, client: *Client) Task.TaskAction,
 loop: ?*Loop,
 tmp_client: ?*Client,
 
+/// Initialize `Server` task, `addr` can be any type of socket (UNIX, IPv4, IPv6, ...), `on_accept` runs after a connection has be accepted, `Client` is heap allocated - the user is REQUIRED to manage this memory.
 pub fn init(allocator: std.mem.Allocator, addr: std.net.Address, on_accept: *const fn(self: *Server, client: *Client) Task.TaskAction, userdata: ?*anyopaque) !Server {
     return .{
         .allocator = allocator,
@@ -29,12 +36,12 @@ pub fn init(allocator: std.mem.Allocator, addr: std.net.Address, on_accept: *con
     };
 }
 
+/// Closes the server socket.
 pub fn deinit(self: *Server) void {
-    if (self.tmp_client) |client| {
-        self.allocator.destroy(client);
-    }
+    std.posix.close(self.socket);
 }
 
+/// Register the task on the event loop.
 pub fn register(self: *Server, loop: *Loop, backlog: u31, reuse_addr: bool) !void {
     self.loop = loop;
 
@@ -53,7 +60,7 @@ pub fn register(self: *Server, loop: *Loop, backlog: u31, reuse_addr: bool) !voi
 fn gen(self: *Task, rt: *aio.Dynamic) anyerror!void {
     const server: *Server = @ptrCast(@alignCast(self.userdata));
     server.tmp_client = try server.allocator.create(Client);
-    server.tmp_client.?.initServer(server);
+    server.tmp_client.?._initServer(server);
 
     try rt.queue(aio.op(.accept, .{
         .socket = server.socket,
@@ -74,8 +81,6 @@ fn done(task: *Task, failed: bool) Task.TaskAction {
 
     if (ret == .rearm) {
         server.tmp_client = null;
-    } else {
-        std.posix.close(server.socket);
     }
 
     return ret;

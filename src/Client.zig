@@ -1,3 +1,9 @@
+//! `Client` task is useful to connecting to a remote server and works as an abstraction when `Server` accepts a connection
+//!
+//! `Client` instance given by `Server` is heap allocated, you are REQUIRED to manage
+//!
+//! Ensure it lives long enough, if not, there will be consequences!!
+
 const std = @import("std");
 const aio = @import("aio");
 const Loop = @import("Loop.zig");
@@ -20,6 +26,7 @@ writer: Writer,
 sock_addr: std.posix.sockaddr = undefined,
 sock_addrlen: std.posix.socklen_t = undefined,
 
+/// Initialize `Client` task, `addr` serves as target to which to connect to, `on_connect` runs after the connection has been made.
 pub fn init(addr: std.net.Address, on_connect: *const fn(self: *Client) void, userdata: ?*anyopaque) !Client {
     return .{
         .addr = addr,
@@ -33,13 +40,16 @@ pub fn init(addr: std.net.Address, on_connect: *const fn(self: *Client) void, us
     };
 }
 
-pub fn initServer(self: *Client, server: *Server) void {
+
+/// NEVER call this function directly, unless you know what you are doing, you probably don't.
+pub fn _initServer(self: *Client, server: *Server) void {
     self.sock_addrlen = @sizeOf(std.posix.socket_t);
     self.loop = server.loop;
     self.reader = Reader.init();
     self.writer = Writer.init();
 }
 
+/// Register the task on the event loop.
 pub fn register(self: *Client, loop: *Loop) !void {
     self.loop = loop;
 
@@ -47,6 +57,7 @@ pub fn register(self: *Client, loop: *Loop) !void {
     try loop.add_task(&self.task);
 }
 
+/// Closes the client connection.
 pub fn deinit(self: *Client) void {
     std.posix.close(self.socket);
 }
@@ -73,6 +84,7 @@ fn done(task: *Task, failed: bool) Task.TaskAction {
     return .disarm;
 }
 
+/// Read data sent by a sever into `buffer`, `fun` runs after the data has been read, you can repeat this action by returning `.rearm`.
 pub fn read(self: *Client, buffer: []u8, fun: ?*const fn(self: *Client, buffer: []u8, read: usize) Task.TaskAction) !void {
     self.reader.buffer = buffer;
     self.reader.fun = fun;
@@ -81,6 +93,7 @@ pub fn read(self: *Client, buffer: []u8, fun: ?*const fn(self: *Client, buffer: 
     try self.loop.?.add_task(&self.reader.task);
 }
 
+/// Write data to a server from `buffer`, `fun` runs after the data has been written, you can repeat this action by returning `.rearm`.
 pub fn write(self: *Client, buffer: []const u8, fun: ?*const fn(self: *Client, buffer: []const u8, write: usize) Task.TaskAction) !void {
     self.writer.buffer = buffer;
     self.writer.fun = fun;
@@ -107,6 +120,7 @@ const Reader = struct {
         };
     }
 
+    /// Update the buffer in case of memory offset.
     pub fn updateBuffer(self: *Self, buffer: []u8) void {
         self.buffer = buffer;
     }
@@ -151,6 +165,7 @@ const Writer = struct {
         };
     }
 
+    /// Update the buffer in case of memory offset.
     pub fn updateBuffer(self: *Self, buffer: []const u8) void {
         self.buffer = buffer;
     }

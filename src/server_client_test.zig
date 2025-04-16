@@ -11,7 +11,7 @@ var buffer: [1024]u8 = undefined;
 fn accepted(_: *Server, client: *Client) Task.TaskAction {
     std.debug.print("Recieved connection!\n", .{});
 
-    client.write("Hello from libzev!", null) catch unreachable;
+    client.write("Hello from libzev!", on_write) catch unreachable;
 
     return .disarm;
 }
@@ -26,6 +26,13 @@ fn on_read(client: *Client, buf: []u8, _: usize) Task.TaskAction {
     std.debug.print("Recieved: {s}\n", .{buf});
 
     client.deinit();
+    return .disarm;
+}
+
+fn on_write(client: *Client, _: []const u8, _: usize) Task.TaskAction {
+    client.deinit();
+    std.testing.allocator.destroy(client);
+
     return .disarm;
 }
 
