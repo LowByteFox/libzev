@@ -12,4 +12,5 @@ test {
     _ = @import("Idle.zig");
     _ = @import("Timer.zig");
     _ = @import("Worker.zig");
+    _ = @import("server_client_test.zig");
 }

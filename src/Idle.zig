@@ -9,12 +9,12 @@ const Task = @import("Task.zig");
 
 const Idle = @This();
 
-userdata: usize,
+userdata: ?*anyopaque,
 task: Task,
 fun: *const fn(self: *Idle) Task.TaskAction,
 
 /// Initialize `Idle` task, runs `fun` after completion.
-pub fn init(fun: fn(self: *Idle) Task.TaskAction, userdata: usize) Idle {
+pub fn init(fun: fn(self: *Idle) Task.TaskAction, userdata: ?*anyopaque) Idle {
     return .{
         .userdata = userdata,
         .task = Task.init(gen, done),
@@ -24,7 +24,7 @@ pub fn init(fun: fn(self: *Idle) Task.TaskAction, userdata: usize) Idle {
 
 /// Register the task on the event loop.
 pub fn register(self: *Idle, loop: *Loop) !void {
-    self.task.userdata = @intFromPtr(self);
+    self.task.userdata = @ptrCast(self);
     try loop.add_task(&self.task);
 }
 
@@ -35,7 +35,7 @@ fn gen(self: *Task, rt: *aio.Dynamic) anyerror!void {
 }
 
 fn done(task: *Task, _: bool) Task.TaskAction {
-    const idle: *Idle = @ptrFromInt(task.userdata);
+    const idle: *Idle = @ptrCast(@alignCast(task.userdata));
     return idle.fun(idle);
 }
 
@@ -57,7 +57,7 @@ test "idle test" {
     var loop = try Loop.init(std.testing.allocator, 4096);
     defer loop.deinit();
 
-    var idle = init(hello, 0);
+    var idle = init(hello, null);
     try idle.register(&loop);
 
     while (try loop.tick(.blocking) > 0) {}

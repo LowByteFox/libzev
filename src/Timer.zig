@@ -9,13 +9,13 @@ const Task = @import("Task.zig");
 
 const Timer = @This();
 
-userdata: usize,
+userdata: ?*anyopaque,
 task: Task,
 timeout_ns: u128,
 fun: *const fn(self: *Timer) Task.TaskAction,
 
 /// Initialize `Timer` task, runs `fun` after `timeout` nanoseconds pass.
-pub fn init(fun: fn(self: *Timer) Task.TaskAction, timeout: u128, userdata: usize) Timer {
+pub fn init(fun: fn(self: *Timer) Task.TaskAction, timeout: u128, userdata: ?*anyopaque) Timer {
     return .{
         .userdata = userdata,
         .timeout_ns = timeout,
@@ -26,12 +26,12 @@ pub fn init(fun: fn(self: *Timer) Task.TaskAction, timeout: u128, userdata: usiz
 
 /// Register the task on the event loop
 pub fn register(self: *Timer, loop: *Loop) !void {
-    self.task.userdata = @intFromPtr(self);
+    self.task.userdata = @ptrCast(self);
     try loop.add_task(&self.task);
 }
 
 fn gen(self: *Task, rt: *aio.Dynamic) anyerror!void {
-    const timer: *Timer = @ptrFromInt(self.userdata);
+    const timer: *Timer = @ptrCast(@alignCast(self.userdata));
 
     try rt.queue(aio.op(.timeout, .{
         .ns = timer.timeout_ns,
@@ -40,7 +40,7 @@ fn gen(self: *Task, rt: *aio.Dynamic) anyerror!void {
 }
 
 fn done(task: *Task, _: bool) Task.TaskAction {
-    const timer: *Timer = @ptrFromInt(task.userdata);
+    const timer: *Timer = @ptrCast(@alignCast(task.userdata));
     return timer.fun(timer);
 }
 
@@ -55,7 +55,7 @@ fn hello(timer: *Timer) Task.TaskAction {
 
     timer.timeout_ns = counter * std.time.ns_per_ms;
 
-    if (counter <= 1000) {
+    if (counter <= 500) {
         return .rearm;
     }
 
@@ -66,7 +66,7 @@ test "timer test" {
     var loop = try Loop.init(std.testing.allocator, 4096);
     defer loop.deinit();
 
-    var timer = init(hello, counter, 0);
+    var timer = init(hello, counter, null);
     try timer.register(&loop);
 
     while (try loop.tick(.blocking) > 0) {}

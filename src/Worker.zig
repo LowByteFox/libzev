@@ -11,7 +11,7 @@ const Task = @import("Task.zig");
 
 const Worker = @This();
 
-userdata: usize,
+userdata: ?*anyopaque,
 task: Task,
 notifier: aio.EventSource,
 /// Returning `.rearm` will run the work function again on the same thread.
@@ -19,7 +19,7 @@ work: *const fn(self: *Worker) Task.TaskAction,
 after_work: *const fn(self: *Worker) Task.TaskAction,
 
 /// Initialize `Worker` task , `work` runs on a separate thread, `after` runs on the main thread.
-pub fn init(work: fn(self: *Worker) Task.TaskAction, after: fn(self: *Worker) Task.TaskAction, userdata: usize) !Worker {
+pub fn init(work: fn(self: *Worker) Task.TaskAction, after: fn(self: *Worker) Task.TaskAction, userdata: ?*anyopaque) !Worker {
     return .{
         .userdata = userdata,
         .task = Task.init(gen, done),
@@ -31,12 +31,12 @@ pub fn init(work: fn(self: *Worker) Task.TaskAction, after: fn(self: *Worker) Ta
 
 /// Register the task on the event loop
 pub fn register(self: *Worker, loop: *Loop) !void {
-    self.task.userdata = @intFromPtr(self);
+    self.task.userdata = @ptrCast(self);
     try loop.add_task(&self.task);
 }
 
 fn gen(self: *Task, rt: *aio.Dynamic) anyerror!void {
-    const worker: *Worker = @ptrFromInt(self.userdata);
+    const worker: *Worker = @ptrCast(@alignCast(self.userdata));
 
     try rt.queue(aio.op(.wait_event_source, .{
         .source = &worker.notifier,
@@ -47,7 +47,7 @@ fn gen(self: *Task, rt: *aio.Dynamic) anyerror!void {
 }
 
 fn done(task: *Task, _: bool) Task.TaskAction {
-    const worker: *Worker = @ptrFromInt(task.userdata);
+    const worker: *Worker = @ptrCast(@alignCast(task.userdata));
 
     return blk: {
         const ret = worker.after_work(worker);
@@ -87,7 +87,7 @@ fn test_work(_: *Worker) Task.TaskAction {
     std.debug.print("Work from thread {}: {}\n", .{std.Thread.getCurrentId(), out});
 
     value += 10;
-    if (value < 50) {
+    if (value < 20) {
         return .rearm;
     }
 
@@ -97,9 +97,9 @@ fn test_work(_: *Worker) Task.TaskAction {
 fn test_after(_: *Worker) Task.TaskAction {
     std.debug.print("Work Done!\n", .{});
 
-    value -= 5; // becomes 45
+    value -= 5; // becomes 15
 
-    if (value < 50) {
+    if (value < 20) {
         std.debug.print("Thread {} re-run the work!\n", .{std.Thread.getCurrentId()});
         return .rearm;
     }
@@ -111,7 +111,7 @@ test "worker test" {
     var loop = try Loop.init(std.testing.allocator, 4096);
     defer loop.deinit();
 
-    var worker = try init(test_work, test_after, 0);
+    var worker = try init(test_work, test_after, null);
     try worker.register(&loop);
 
     while (try loop.tick(.blocking) > 0) {}

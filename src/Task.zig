@@ -9,13 +9,13 @@ pub const TaskAction = enum {
 
 const Task = @This();
 
-userdata: usize,
+userdata: ?*anyopaque,
 gen: *const fn(self: *Task, rt: *aio.Dynamic) anyerror!void,
 after: *const fn(self: *Task, failed: bool) TaskAction,
 
 pub fn init(gen: *const fn(self: *Task, rt: *aio.Dynamic) anyerror!void, done: *const fn(self: *Task, failed: bool) TaskAction) Task {
     return .{
-        .userdata = 0,
+        .userdata = null,
         .gen = gen,
         .after = done,
     };
